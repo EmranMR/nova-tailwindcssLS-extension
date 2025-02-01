@@ -1,76 +1,179 @@
+"use strict";
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
+// src/main.ts
+var main_exports = {};
+__export(main_exports, {
+  activate: () => activate,
+  deactivate: () => deactivate
+});
+module.exports = __toCommonJS(main_exports);
+
+// src/Commands/CleanCache.ts
+var CacheClean = class {
+  name = "cleanCache";
+  options = { args: ["cache:clear"] };
+  process;
+  // needs the ! due to strict type check
+  phpactor;
+  commands = nova.commands;
+  constructor(phpactor) {
+    this.phpactor = phpactor;
+    this.commands.register(this.name, this.run, this);
+  }
+  run(_editor) {
+    this.phpactor.stop();
+    this.clean();
+    this.phpactor.start();
+  }
+  clean() {
+    try {
+      this.process = new Process(this.phpactor.path(), this.options);
+      this.process.start();
+      this.phpactor.notify("\u2705 Cache Successfuly Cleared");
+    } catch (_e) {
+      this.phpactor.notify(
+        "\u274C Was unable to clean cache (raise an issue? \u{1F914})"
+      );
+    }
+  }
+};
+
+// src/models/Path.ts
+var Path = class {
+  promise;
+  constructor() {
+    this.promise = this.runWhich();
+  }
+  async getBin() {
+    return await this.promise;
+  }
+  /*k
+   * Runs the which to find the bin
+   */
+  async runWhich() {
+    const process = new Process("/usr/bin/env", {
+      args: ["which", "tailwindcss-language-server"]
+    });
+    process.start();
+    const stream = process.stdout;
+    const reader = stream?.getReader();
+    let path = "";
+    if (reader != null) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        path += new TextDecoder().decode(value);
+      }
+    }
+    return path.trim();
+  }
+};
+
+// src/models/TailwindCSS.ts
+var TailwindCSS = class {
+  languageClient = null;
+  #path;
+  #name = "tailwindCSS";
+  constructor() {
+    new Path().getBin().then((path) => {
+      this.#path = path;
+      if (path) {
+        this.start();
+      } else {
+        this.notify(
+          "Install Server via npm install -g @tailwindcss/language-server, then restart"
+        );
+      }
+    });
+    this.registerCommands();
+  }
+  registerCommands() {
+    new CacheClean(this);
+  }
+  start() {
+    if (this.languageClient) {
+      this.languageClient.stop();
+      nova.subscriptions.remove(this.languageClient);
+    }
+    const client = new LanguageClient(
+      "TailwindCSS",
+      "TailwindCSS Language Server",
+      this.serverOptions(),
+      this.clientOptions()
+    );
+    try {
+      client.start();
+      nova.subscriptions.add(client);
+      this.languageClient = client;
+    } catch (err) {
+      if (nova.inDevMode()) {
+        console.error(err);
+      }
+    }
+  }
+  clientOptions() {
+    return {
+      syntaxes: [
+        "php",
+        "php_only",
+        "blade",
+        "html",
+        "javascript",
+        "typescript"
+      ]
+    };
+  }
+  serverOptions() {
+    return {
+      path: "/Users/Emran/.nvm/versions/node/v20.11.1/bin/tailwindcss-language-server"
+      // path: this.#path,
+    };
+  }
+  stop() {
+    if (this.languageClient) {
+      this.languageClient.stop();
+      nova.subscriptions.remove(this.languageClient);
+      this.languageClient = null;
+    }
+  }
+  deactivate() {
+    this.stop();
+  }
+  notify(message) {
+    const request = new NotificationRequest();
+    request.title = nova.localize("TailwinCSS Server");
+    request.body = nova.localize(message);
+    nova.notifications.add(request);
+  }
+};
+
+// src/main.ts
 var langserver = null;
-
-exports.activate = function() {
-    // Do work when the extension is activated
-    langserver = new ExampleLanguageServer();
+function activate() {
+  langserver = new TailwindCSS();
 }
-
-exports.deactivate = function() {
-    // Clean up state before the extension is deactivated
-    if (langserver) {
-        langserver.deactivate();
-        langserver = null;
-    }
+function deactivate() {
+  if (langserver) {
+    langserver.deactivate();
+    langserver = null;
+  }
 }
-
-
-class ExampleLanguageServer {
-    constructor() {
-        // Observe the configuration setting for the server's location, and restart the server on change
-        nova.config.observe('example.language-server-path', function(path) {
-            this.start(path);
-        }, this);
-    }
-    
-    deactivate() {
-        this.stop();
-    }
-    
-    start(path) {
-        if (this.languageClient) {
-            this.languageClient.stop();
-            nova.subscriptions.remove(this.languageClient);
-        }
-        
-        // Use the default server path
-        if (!path) {
-            path = '/usr/local/bin/example';
-        }
-        
-        // Create the client
-        var serverOptions = {
-            path: path
-        };
-        var clientOptions = {
-            // The set of document syntaxes for which the server is valid
-            syntaxes: ['javascript']
-        };
-        var client = new LanguageClient('example-langserver', 'Example Language Server', serverOptions, clientOptions);
-        
-        try {
-            // Start the client
-            client.start();
-            
-            // Add the client to the subscriptions to be cleaned up
-            nova.subscriptions.add(client);
-            this.languageClient = client;
-        }
-        catch (err) {
-            // If the .start() method throws, it's likely because the path to the language server is invalid
-            
-            if (nova.inDevMode()) {
-                console.error(err);
-            }
-        }
-    }
-    
-    stop() {
-        if (this.languageClient) {
-            this.languageClient.stop();
-            nova.subscriptions.remove(this.languageClient);
-            this.languageClient = null;
-        }
-    }
-}
-

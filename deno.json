@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "lib": ["dom", "es2015"],
+    "strict": true
+  },
+  "tasks": {
+    "build": "deno run --allow-all build.ts && deno run link",
+    "link": "ln -f ./README.md tailwindcss.novaextension/"
+  }
+}
