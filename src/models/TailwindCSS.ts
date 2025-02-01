@@ -2,14 +2,13 @@ import { CacheClean } from "../Commands/CleanCache.ts";
 import { Path } from "./Path.ts";
 export class TailwindCSS {
   languageClient: LanguageClient | null = null;
-  #path?: string;
   readonly #name = "tailwindCSS";
 
   constructor() {
     new Path().getBin().then((path) => {
-      this.#path = path;
+      console.log(path);
       if (path) {
-        this.start();
+        this.start(path);
       } else {
         this.notify(
           "Install Server via npm install -g @tailwindcss/language-server, then restart",
@@ -24,7 +23,7 @@ export class TailwindCSS {
     new CacheClean(this);
   }
 
-  start() {
+  start(path: string) {
     if (this.languageClient) {
       this.languageClient.stop();
       nova.subscriptions.remove(this.languageClient);
@@ -33,7 +32,7 @@ export class TailwindCSS {
     const client = new LanguageClient(
       "TailwindCSS",
       "TailwindCSS Language Server",
-      this.serverOptions(),
+      this.serverOptions(path),
       this.clientOptions(),
     );
     try {
@@ -52,22 +51,14 @@ export class TailwindCSS {
 
   private clientOptions() {
     return {
-      syntaxes: [
-        "php",
-        "php_only",
-        "blade",
-        "html",
-        "javascript",
-        "typescript",
-      ],
+      debug: true,
+      syntaxes: ["html", "php", "blade"],
     };
   }
 
-  private serverOptions() {
+  private serverOptions(path: string) {
     return {
-      path:
-        "/Users/Emran/.nvm/versions/node/v20.11.1/bin/tailwindcss-language-server",
-      // path: this.#path,
+      path: path,
     };
   }
 
