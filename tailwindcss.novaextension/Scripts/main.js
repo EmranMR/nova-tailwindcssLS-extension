@@ -25,36 +25,6 @@ __export(main_exports, {
 });
 module.exports = __toCommonJS(main_exports);
 
-// src/Commands/CleanCache.ts
-var CacheClean = class {
-  name = "cleanCache";
-  options = { args: ["cache:clear"] };
-  process;
-  // needs the ! due to strict type check
-  phpactor;
-  commands = nova.commands;
-  constructor(phpactor) {
-    this.phpactor = phpactor;
-    this.commands.register(this.name, this.run, this);
-  }
-  run(_editor) {
-    this.phpactor.stop();
-    this.clean();
-    this.phpactor.start();
-  }
-  clean() {
-    try {
-      this.process = new Process(this.phpactor.path(), this.options);
-      this.process.start();
-      this.phpactor.notify("\u2705 Cache Successfuly Cleared");
-    } catch (_e) {
-      this.phpactor.notify(
-        "\u274C Was unable to clean cache (raise an issue? \u{1F914})"
-      );
-    }
-  }
-};
-
 // src/models/Path.ts
 var Path = class {
   promise;
@@ -103,10 +73,6 @@ var TailwindCSS = class {
         );
       }
     });
-    this.registerCommands();
-  }
-  registerCommands() {
-    new CacheClean(this);
   }
   start(path) {
     if (this.languageClient) {

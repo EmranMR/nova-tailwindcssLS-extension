@@ -1,4 +1,3 @@
-import { CacheClean } from "../Commands/CleanCache.ts";
 import { Path } from "./Path.ts";
 export class TailwindCSS {
   languageClient: LanguageClient | null = null;
@@ -15,12 +14,6 @@ export class TailwindCSS {
         );
       }
     });
-
-    this.registerCommands();
-  }
-
-  private registerCommands() {
-    new CacheClean(this);
   }
 
   start(path: string) {
